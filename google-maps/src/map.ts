@@ -13,6 +13,7 @@ import type {
   MapClickCallbackData,
   MarkerClickCallbackData,
   MyLocationButtonClickCallbackData,
+  LatLng,
 } from './definitions';
 import { LatLngBounds, MapType } from './definitions';
 import type { CreateMapArgs } from './implementation';
@@ -23,65 +24,93 @@ export interface GoogleMapInterface {
     options: CreateMapArgs,
     callback?: MapListenerCallback<MapReadyCallbackData>,
   ): Promise<GoogleMap>;
+
   enableClustering(
     /**
      * The minimum number of markers that can be clustered together. The default is 4 markers.
      */
     minClusterSize?: number,
   ): Promise<void>;
+
   disableClustering(): Promise<void>;
+
   addMarker(marker: Marker): Promise<string>;
+
   addMarkers(markers: Marker[]): Promise<string[]>;
+
   removeMarker(id: string): Promise<void>;
+
   removeMarkers(ids: string[]): Promise<void>;
+
   destroy(): Promise<void>;
+
   setCamera(config: CameraConfig): Promise<void>;
+
   /**
    * Get current map type
    */
   getMapType(): Promise<MapType>;
+
   setMapType(mapType: MapType): Promise<void>;
+
   enableIndoorMaps(enabled: boolean): Promise<void>;
+
   enableTrafficLayer(enabled: boolean): Promise<void>;
+
   enableAccessibilityElements(enabled: boolean): Promise<void>;
+
   enableCurrentLocation(enabled: boolean): Promise<void>;
+
   setPadding(padding: MapPadding): Promise<void>;
+
   setOnBoundsChangedListener(
     callback?: MapListenerCallback<CameraIdleCallbackData>,
   ): Promise<void>;
+
   setOnCameraIdleListener(
     callback?: MapListenerCallback<CameraIdleCallbackData>,
   ): Promise<void>;
+
   setOnCameraMoveStartedListener(
     callback?: MapListenerCallback<CameraMoveStartedCallbackData>,
   ): Promise<void>;
+
   setOnClusterClickListener(
     callback?: MapListenerCallback<ClusterClickCallbackData>,
   ): Promise<void>;
+
   setOnClusterInfoWindowClickListener(
     callback?: MapListenerCallback<ClusterClickCallbackData>,
   ): Promise<void>;
+
   setOnInfoWindowClickListener(
     callback?: MapListenerCallback<MarkerClickCallbackData>,
   ): Promise<void>;
+
   setOnMapClickListener(
     callback?: MapListenerCallback<MapClickCallbackData>,
   ): Promise<void>;
+
   setOnMarkerClickListener(
     callback?: MapListenerCallback<MarkerClickCallbackData>,
   ): Promise<void>;
+
   setOnMarkerDragStartListener(
     callback?: MapListenerCallback<MarkerClickCallbackData>,
   ): Promise<void>;
+
   setOnMarkerDragListener(
     callback?: MapListenerCallback<MarkerClickCallbackData>,
   ): Promise<void>;
+
   setOnMarkerDragEndListener(
     callback?: MapListenerCallback<MarkerClickCallbackData>,
   ): Promise<void>;
+
   setOnMyLocationButtonClickListener(
     callback?: MapListenerCallback<MyLocationButtonClickCallbackData>,
   ): Promise<void>;
+
   setOnMyLocationClickListener(
     callback?: MapListenerCallback<MapClickCallbackData>,
   ): Promise<void>;
@@ -191,7 +220,7 @@ export class GoogleMap {
       let elementBounds = element.getBoundingClientRect();
       if (elementBounds.width == 0) {
         let retries = 0;
-        const boundsInterval = setInterval(function () {
+        const boundsInterval = setInterval(function() {
           if (elementBounds.width == 0 && retries < 30) {
             elementBounds = element.getBoundingClientRect();
             retries++;
@@ -245,6 +274,25 @@ export class GoogleMap {
     const res = await CapacitorGoogleMaps.addMarker({
       id: this.id,
       marker,
+    });
+
+    return res.id;
+  }
+
+  /**
+   * Adds a polyline to the map
+   *
+   * @returns created polyline id
+   * @param geoPoints
+   * @param width
+   * @param color
+   */
+  async addPolyline(geoPoints: LatLng[], width?: number, color?: number): Promise<string> {
+    const res = await CapacitorGoogleMaps.addPolyline({
+      id: this.id,
+      geoPoints,
+      width,
+      color,
     });
 
     return res.id;
@@ -358,6 +406,19 @@ export class GoogleMap {
    */
   async enableTrafficLayer(enabled: boolean): Promise<void> {
     return CapacitorGoogleMaps.enableTrafficLayer({
+      id: this.id,
+      enabled,
+    });
+  }
+
+  /**
+   * Controls whether the map will show the zoom controls
+   *
+   * @param enabled
+   * @returns
+   */
+  async enableZoomControls(enabled: boolean): Promise<void> {
+    return CapacitorGoogleMaps.enableZoomControls({
       id: this.id,
       enabled,
     });

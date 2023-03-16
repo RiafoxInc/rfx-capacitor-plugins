@@ -2,6 +2,7 @@ package com.capacitorjs.plugins.googlemaps
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.graphics.RectF
 import android.util.Log
 import android.view.MotionEvent
@@ -10,8 +11,10 @@ import com.getcapacitor.*
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
+import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.PolylineOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,14 +22,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 @CapacitorPlugin(
-        name = "CapacitorGoogleMaps",
-        permissions =
-                [
-                        Permission(
-                                strings = [Manifest.permission.ACCESS_FINE_LOCATION],
-                                alias = CapacitorGoogleMapsPlugin.LOCATION
-                        ),
-                ],
+    name = "CapacitorGoogleMaps",
+    permissions =
+    [
+        Permission(
+            strings = [Manifest.permission.ACCESS_FINE_LOCATION],
+            alias = CapacitorGoogleMapsPlugin.LOCATION
+        ),
+    ],
 )
 class CapacitorGoogleMapsPlugin : Plugin() {
     private var maps: HashMap<String, CapacitorGoogleMap> = HashMap()
@@ -42,44 +45,44 @@ class CapacitorGoogleMapsPlugin : Plugin() {
         super.load()
 
         this.bridge.webView.setOnTouchListener(
-                object : View.OnTouchListener {
-                    override fun onTouch(v: View?, event: MotionEvent?): Boolean {
-                        if (event != null) {
-                            if (event.source == -1) {
-                                return v?.onTouchEvent(event) ?: true
-                            }
-
-                            val touchX = event.x
-                            val touchY = event.y
-
-                            for ((id, map) in maps) {
-                                val mapRect = map.getMapBounds()
-                                if (mapRect.contains(touchX.toInt(), touchY.toInt())) {
-                                    if (event.action == MotionEvent.ACTION_DOWN) {
-                                        if (cachedTouchEvents[id] == null) {
-                                            cachedTouchEvents[id] = mutableListOf<MotionEvent>()
-                                        }
-
-                                        cachedTouchEvents[id]?.clear()
-                                    }
-
-                                    val motionEvent = MotionEvent.obtain(event)
-                                    cachedTouchEvents[id]?.add(motionEvent)
-
-                                    val payload = JSObject()
-                                    payload.put("x", touchX / map.config.devicePixelRatio)
-                                    payload.put("y", touchY / map.config.devicePixelRatio)
-                                    payload.put("mapId", map.id)
-
-                                    notifyListeners("isMapInFocus", payload)
-                                    return true
-                                }
-                            }
+            object : View.OnTouchListener {
+                override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                    if (event != null) {
+                        if (event.source == -1) {
+                            return v?.onTouchEvent(event) ?: true
                         }
 
-                        return v?.onTouchEvent(event) ?: true
+                        val touchX = event.x
+                        val touchY = event.y
+
+                        for ((id, map) in maps) {
+                            val mapRect = map.getMapBounds()
+                            if (mapRect.contains(touchX.toInt(), touchY.toInt())) {
+                                if (event.action == MotionEvent.ACTION_DOWN) {
+                                    if (cachedTouchEvents[id] == null) {
+                                        cachedTouchEvents[id] = mutableListOf<MotionEvent>()
+                                    }
+
+                                    cachedTouchEvents[id]?.clear()
+                                }
+
+                                val motionEvent = MotionEvent.obtain(event)
+                                cachedTouchEvents[id]?.add(motionEvent)
+
+                                val payload = JSObject()
+                                payload.put("x", touchX / map.config.devicePixelRatio)
+                                payload.put("y", touchY / map.config.devicePixelRatio)
+                                payload.put("mapId", map.id)
+
+                                notifyListeners("isMapInFocus", payload)
+                                return true
+                            }
+                        }
                     }
+
+                    return v?.onTouchEvent(event) ?: true
                 }
+            }
         )
     }
 
@@ -118,8 +121,8 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             }
 
             val configObject =
-                    call.getObject("config")
-                            ?: throw InvalidArgumentsError("config object is missing")
+                call.getObject("config")
+                    ?: throw InvalidArgumentsError("config object is missing")
 
             val forceCreate = call.getBoolean("forceCreate", false)!!
 
@@ -236,6 +239,52 @@ class CapacitorGoogleMapsPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun addPolyline(call: PluginCall) {
+        try {
+            val id = call.getString("id")
+            id ?: throw InvalidMapIdError()
+
+            val map = maps[id]
+            map ?: throw MapNotFoundError()
+
+            val polylineOptions = PolylineOptions();
+
+            // stroke width
+            polylineOptions.width(call.getFloat("width", 3F)!!)
+            // stroke color
+            polylineOptions.color(call.getInt("color", Color.RED)!!)
+            // geodesic
+            polylineOptions.geodesic(true);
+            // joint type
+            polylineOptions.jointType(JointType.ROUND);
+
+            val points: MutableList<LatLng> = mutableListOf()
+            val configPointsArray = call.getArray("geoPoints")
+            configPointsArray ?: throw InvalidArgumentsError("geoPoints array is missing")
+
+            for (i in 0 until configPointsArray.length()) {
+                val pointObj = configPointsArray.getJSONObject(i)
+                print(pointObj);
+                points.add(LatLng(pointObj.getDouble("lat"), pointObj.getDouble("lng")))
+            }
+
+            polylineOptions.addAll(points);
+
+            map.addPolyline(polylineOptions) { result ->
+                val polylineId = result.getOrThrow();
+
+                val res = JSObject()
+                res.put("id", polylineId)
+                call.resolve(res)
+            }
+        } catch (e: GoogleMapsError) {
+            handleError(call, e)
+        } catch (e: Exception) {
+            handleError(call, e)
+        }
+    }
+
+    @PluginMethod
     fun enableClustering(call: PluginCall) {
         try {
             val id = call.getString("id")
@@ -246,7 +295,7 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             val map = maps[id]
             map ?: throw MapNotFoundError()
 
-            map.enableClustering(minClusterSize,  { err ->
+            map.enableClustering(minClusterSize, { err ->
                 if (err != null) {
                     throw err
                 }
@@ -356,8 +405,8 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             map ?: throw MapNotFoundError()
 
             val cameraConfigObject =
-                    call.getObject("config")
-                            ?: throw InvalidArgumentsError("config object is missing")
+                call.getObject("config")
+                    ?: throw InvalidArgumentsError("config object is missing")
 
             val config = GoogleMapCameraConfig(cameraConfigObject)
 
@@ -410,7 +459,7 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             map ?: throw MapNotFoundError()
 
             val mapType =
-                    call.getString("mapType") ?: throw InvalidArgumentsError("mapType is missing")
+                call.getString("mapType") ?: throw InvalidArgumentsError("mapType is missing")
 
             map.setMapType(mapType) { err ->
                 if (err != null) {
@@ -436,7 +485,7 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             map ?: throw MapNotFoundError()
 
             val enabled =
-                    call.getBoolean("enabled") ?: throw InvalidArgumentsError("enabled is missing")
+                call.getBoolean("enabled") ?: throw InvalidArgumentsError("enabled is missing")
 
             map.enableIndoorMaps(enabled) { err ->
                 if (err != null) {
@@ -462,7 +511,7 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             map ?: throw MapNotFoundError()
 
             val enabled =
-                    call.getBoolean("enabled") ?: throw InvalidArgumentsError("enabled is missing")
+                call.getBoolean("enabled") ?: throw InvalidArgumentsError("enabled is missing")
 
             map.enableTrafficLayer(enabled) { err ->
                 if (err != null) {
@@ -471,6 +520,32 @@ class CapacitorGoogleMapsPlugin : Plugin() {
 
                 call.resolve()
             }
+        } catch (e: GoogleMapsError) {
+            handleError(call, e)
+        } catch (e: Exception) {
+            handleError(call, e)
+        }
+    }
+
+    @PluginMethod
+    fun enableZoomControls(call: PluginCall) {
+        try {
+            val id = call.getString("id")
+            id ?: throw InvalidMapIdError()
+
+            val map = maps[id]
+            map ?: throw MapNotFoundError()
+
+            val enabled =
+                call.getBoolean("enabled") ?: throw InvalidArgumentsError("enabled is missing")
+
+            map.enableZoomControls(enabled) { err ->
+                if (err != null) {
+                    throw err
+                }
+                call.resolve()
+            }
+
         } catch (e: GoogleMapsError) {
             handleError(call, e)
         } catch (e: Exception) {
@@ -506,7 +581,7 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             map ?: throw MapNotFoundError()
 
             val paddingObj =
-                    call.getObject("padding") ?: throw InvalidArgumentsError("padding is missing")
+                call.getObject("padding") ?: throw InvalidArgumentsError("padding is missing")
 
             val padding = GoogleMapPadding(paddingObj)
 
@@ -539,8 +614,8 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             map ?: throw MapNotFoundError()
 
             val boundsObj =
-                    call.getObject("mapBounds")
-                            ?: throw InvalidArgumentsError("mapBounds object is missing")
+                call.getObject("mapBounds")
+                    ?: throw InvalidArgumentsError("mapBounds object is missing")
 
             val bounds = boundsObjectToRect(boundsObj)
 
@@ -567,7 +642,7 @@ class CapacitorGoogleMapsPlugin : Plugin() {
 
             val events = cachedTouchEvents[id]
             if (events != null) {
-                while(events.size > 0) {
+                while (events.size > 0) {
                     val event = events.first()
                     if (focus) {
                         map.dispatchTouchEvent(event)
@@ -654,7 +729,7 @@ class CapacitorGoogleMapsPlugin : Plugin() {
             map ?: throw MapNotFoundError()
 
             val enabled =
-                    call.getBoolean("enabled") ?: throw InvalidArgumentsError("enabled is missing")
+                call.getBoolean("enabled") ?: throw InvalidArgumentsError("enabled is missing")
 
             map.enableCurrentLocation(enabled) { err ->
                 if (err != null) {
@@ -689,25 +764,25 @@ class CapacitorGoogleMapsPlugin : Plugin() {
     private fun boundsObjectToRect(jsonObject: JSONObject): RectF {
         if (!jsonObject.has("width")) {
             throw InvalidArgumentsError(
-                    "GoogleMapConfig object is missing the required 'width' property"
+                "GoogleMapConfig object is missing the required 'width' property"
             )
         }
 
         if (!jsonObject.has("height")) {
             throw InvalidArgumentsError(
-                    "GoogleMapConfig object is missing the required 'height' property"
+                "GoogleMapConfig object is missing the required 'height' property"
             )
         }
 
         if (!jsonObject.has("x")) {
             throw InvalidArgumentsError(
-                    "GoogleMapConfig object is missing the required 'x' property"
+                "GoogleMapConfig object is missing the required 'x' property"
             )
         }
 
         if (!jsonObject.has("y")) {
             throw InvalidArgumentsError(
-                    "GoogleMapConfig object is missing the required 'y' property"
+                "GoogleMapConfig object is missing the required 'y' property"
             )
         }
 

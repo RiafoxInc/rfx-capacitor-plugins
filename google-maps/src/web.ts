@@ -28,6 +28,8 @@ import type {
   OnScrollArgs,
   MapBoundsContainsArgs,
   EnableClusteringArgs,
+  ZoomControlsArgs,
+  AddPolylineArgs,
 } from './implementation';
 
 export class CapacitorGoogleMapsWeb
@@ -155,6 +157,14 @@ export class CapacitorGoogleMapsWeb
     }
   }
 
+  async enableZoomControls(_args: ZoomControlsArgs): Promise<void> {
+    if (_args.enabled) {
+      this.maps[_args.id].map.setOptions({
+        zoomControl: true,
+      });
+    }
+  }
+
   async enableAccessibilityElements(_args: AccElementsArgs): Promise<void> {
     throw new Error('Method not supported on web.');
   }
@@ -188,6 +198,7 @@ export class CapacitorGoogleMapsWeb
       }
     }
   }
+
   async setPadding(_args: PaddingArgs): Promise<void> {
     const bounds = this.maps[_args.id].map.getBounds();
 
@@ -255,6 +266,21 @@ export class CapacitorGoogleMapsWeb
     this.currMarkerId++;
 
     return { id: id };
+  }
+
+  async addPolyline(_args: AddPolylineArgs): Promise<{ id: string }> {
+    const polylineOptions: google.maps.PolylineOptions = {
+      map: this.maps[_args.id].map,
+      geodesic: true,
+      strokeColor: 'RED',
+      strokeWeight: _args.width || 3,
+      editable: false,
+      path: _args.geoPoints,
+    };
+
+    const polyline = new google.maps.Polyline(polylineOptions);
+
+    return { id: polyline.get('id') };
   }
 
   async removeMarkers(_args: RemoveMarkersArgs): Promise<void> {

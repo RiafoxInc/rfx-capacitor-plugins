@@ -57,6 +57,13 @@ export interface AddMarkerArgs {
   marker: Marker;
 }
 
+export interface AddPolylineArgs {
+  id: string;
+  geoPoints: LatLng[];
+  width?: number;
+  color?: number | string;
+}
+
 export interface CameraArgs {
   id: string;
   config: CameraConfig;
@@ -77,6 +84,11 @@ export interface TrafficLayerArgs {
   enabled: boolean;
 }
 
+export interface ZoomControlsArgs {
+  id: string;
+  enabled: boolean;
+}
+
 export interface AccElementsArgs {
   id: string;
   enabled: boolean;
@@ -91,6 +103,7 @@ export interface CurrentLocArgs {
   id: string;
   enabled: boolean;
 }
+
 export interface AddMarkersArgs {
   id: string;
   markers: Marker[];
@@ -118,24 +131,47 @@ export interface EnableClusteringArgs {
 
 export interface CapacitorGoogleMapsPlugin extends Plugin {
   create(options: CreateMapArgs): Promise<void>;
+
   addMarker(args: AddMarkerArgs): Promise<{ id: string }>;
+
   addMarkers(args: AddMarkersArgs): Promise<{ ids: string[] }>;
+
+  addPolyline(args: AddPolylineArgs): Promise<{ id: string }>;
+
   removeMarker(args: RemoveMarkerArgs): Promise<void>;
+
   removeMarkers(args: RemoveMarkersArgs): Promise<void>;
+
   enableClustering(args: EnableClusteringArgs): Promise<void>;
+
   disableClustering(args: { id: string }): Promise<void>;
+
   destroy(args: DestroyMapArgs): Promise<void>;
+
   setCamera(args: CameraArgs): Promise<void>;
+
   getMapType(args: { id: string }): Promise<{ type: string }>;
+
   setMapType(args: MapTypeArgs): Promise<void>;
+
   enableIndoorMaps(args: IndoorMapArgs): Promise<void>;
+
+  enableZoomControls(args: ZoomControlsArgs): Promise<void>;
+
   enableTrafficLayer(args: TrafficLayerArgs): Promise<void>;
+
   enableAccessibilityElements(args: AccElementsArgs): Promise<void>;
+
   enableCurrentLocation(args: CurrentLocArgs): Promise<void>;
+
   setPadding(args: PaddingArgs): Promise<void>;
+
   onScroll(args: OnScrollArgs): Promise<void>;
+
   dispatchMapEvent(args: { id: string; focus: boolean }): Promise<void>;
+
   getMapBounds(args: { id: string }): Promise<LatLngBounds>;
+
   mapBoundsContains(
     args: MapBoundsContainsArgs,
   ): Promise<{ contains: boolean }>;
