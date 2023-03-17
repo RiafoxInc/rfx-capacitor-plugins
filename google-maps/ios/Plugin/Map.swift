@@ -227,6 +227,24 @@ public class Map {
 
         return markerHashes
     }
+    
+    func addPolyline(path: GMSMutablePath, width: CGFloat, color: UIColor) throws -> Int {
+        var polylineHash = 0
+
+        DispatchQueue.main.sync {
+            let polyline = GMSPolyline(path: path)
+            
+            polyline.strokeWidth = width
+            polyline.strokeColor = color
+            polyline.map = self.mapViewController.GMapView
+            
+            polyline.geodesic = true;
+            polylineHash = polyline.hash.hashValue
+        }
+              
+
+        return polylineHash
+    }
 
     func enableClustering(_ minClusterSize: Int?) {
         if !self.mapViewController.clusteringEnabled {
@@ -322,6 +340,12 @@ public class Map {
     func enableTrafficLayer(enabled: Bool) throws {
         DispatchQueue.main.sync {
             self.mapViewController.GMapView.isTrafficEnabled = enabled
+        }
+    }
+    
+    func enableZoomControls(enabled: Bool) throws {
+        DispatchQueue.main.sync {
+            self.mapViewController.GMapView.settings.zoomGestures = enabled;
         }
     }
 

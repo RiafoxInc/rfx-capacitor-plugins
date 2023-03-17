@@ -205,6 +205,38 @@ public class CapacitorGoogleMapsPlugin: CAPPlugin, GMSMapViewDelegate {
             handleError(call, error: error)
         }
     }
+    
+    @objc func addPolyline(_ call: CAPPluginCall) {
+        do {
+            guard let id = call.getString("id") else {
+                throw GoogleMapErrors.invalidMapId
+            }
+            
+            let width = CGFloat(call.getFloat("width") ?? 3)
+            let color = call.getFloat("color")
+
+            guard let geoPoints = (call.getArray("geoPoints") ?? []) as? [GeoPoint] else {
+                throw GoogleMapErrors.invalidArguments("geoPoints array is missing")
+            }
+
+            guard let map = self.maps[id] else {
+                throw GoogleMapErrors.mapNotFound
+            }
+
+            let path = GMSMutablePath()
+            
+            for geoPoint in geoPoints {
+                path.add(CLLocationCoordinate2D(latitude: geoPoint.lat, longitude: geoPoint.lng))
+            }
+            
+            let polylineId = try map.addPolyline(path: path, width: width, color: UIColor.red)
+
+            call.resolve(["id": String(polylineId)])
+
+        } catch {
+            handleError(call, error: error)
+        }
+    }
 
     @objc func removeMarkers(_ call: CAPPluginCall) {
         do {
@@ -372,6 +404,28 @@ public class CapacitorGoogleMapsPlugin: CAPPlugin, GMSMapViewDelegate {
             }
 
             try map.enableTrafficLayer(enabled: enabled)
+
+            call.resolve()
+        } catch {
+            handleError(call, error: error)
+        }
+    }
+    
+    @objc func enableZoomControls(_ call: CAPPluginCall) {
+        do {
+            guard let id = call.getString("id") else {
+                throw GoogleMapErrors.invalidMapId
+            }
+
+            guard let map = self.maps[id] else {
+                throw GoogleMapErrors.mapNotFound
+            }
+
+            guard let enabled = call.getBool("enabled") else {
+                throw GoogleMapErrors.invalidArguments("enabled is missing")
+            }
+
+            try map.enableZoomControls(enabled: enabled)
 
             call.resolve()
         } catch {
